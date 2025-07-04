@@ -19,7 +19,6 @@ def uid_duplicate_check():
             for y, duplicate in enumerate(uid_filtered):
                 if x != y and uid == duplicate:
                     print(f"Multiple users have UID of {x}")
-    return
 
 def get_users():
     passwd_filtered = []
