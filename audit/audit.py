@@ -6,6 +6,14 @@
 #   /etc/passwd
 #   /etc/group
 
+import os
+
+def sudo_check():
+    userid = os.geteuid()
+    if userid != 0:
+        print("You must be a superuser to perform this action.")
+        exit(1)
+
 def uid_duplicate_check():
     uid_filtered = []
     with open("/etc/passwd", "r") as passwd_file:
@@ -66,6 +74,7 @@ def get_groups():
         members = fields[3]
         print(f"Group: {group_name}\nGID: {gid}\nMembers: {members}\n_____________________________")
 
+sudo_check()
 uid_duplicate_check()
 get_users()
 get_groups()
