@@ -56,6 +56,19 @@ def get_users(passwd_file_contents):
             print(f"***WARNING***\nUser: {username} has root permissions with UID: {uid}!\n***WARNING***")
         print(f"User: {username}\nUID: {uid} \nHome directory: {home}\n_____________________________")
 
+def guid_duplicate_check(group_file_contents):
+    guid_filtered = []
+    #Creates list of GUIDs in /etc/group
+    for line in group_file_contents:
+        passwd_field = line.strip().split(":")
+        guid_filtered.append(passwd_field[2])
+    #Checks GUIDs in /etc/group for duplicates
+    #If any of the GUIDs matches another GUID, output that GUID
+    for x, guid in enumerate(guid_filtered):
+        for y, duplicate in enumerate(guid_filtered):
+            if x != y and guid == duplicate:
+                print(f"Multiple groups have GUID of {guid}")
+
 def get_groups(group_file_contents):
     group_filtered = []
     for line in group_file_contents:
@@ -92,6 +105,9 @@ uid_duplicate_check(passwd_file_read)
 
 #Checks /etc/passwd for users UID = 0 or >1000
 get_users(passwd_file_read)
+
+#Checks /etc/group for duplicate GUIDs
+guid_duplicate_check(group_file_read)
 
 #Checks /etc/group for groups that have members
 get_groups(group_file_read)
