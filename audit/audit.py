@@ -113,7 +113,6 @@ guid_duplicate_check(group_file_read)
 get_groups(group_file_read)
 
 #TODO:
-#   - Detect duplicate GUIDs
 #   - Parse /etc/shadow for expired/locked accounts
 #   - Detect Home folders that do not have matching users
 #   - Detect users who have not logged in for 90 days
