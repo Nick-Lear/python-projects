@@ -5,6 +5,7 @@
 #Files:
 #   /etc/passwd
 #   /etc/group
+#   /etc/shadow
 
 import os
 
@@ -89,22 +90,57 @@ def get_groups(group_file_contents):
         members = fields[3]
         print(f"Group: {group_name}\nGID: {gid}\nMembers: {members}\n_____________________________")
 
+def expired_check(shadow_file_contents):
+    print("*************LIST OF LOCKED/EXPIRED ACCOUNTS*************")
+    for line in shadow_file_contents:
+        shadow_fields = line.strip().split(":")
+        user = shadow_fields[0]
+        password = shadow_fields [1]
+
+        # Checks to make sure that shadow_fields[2] and shadow_fields[4] are present and valid
+        last_changed_string = shadow_fields[2]
+        if not last_changed_string.isdigit():
+            continue
+        last_changed = int(last_changed_string)
+
+        max_age_string = shadow_fields[4]
+        if not max_age_string.isdigit():
+            continue
+        max_age = int(max_age_string)
+
+        #Checks for locked users
+        if password in ["!", "*"]:
+            print(f"{user}'s account is locked.")
+
+        #Checks for soon to expire, expired users
+        expire_days = max_age - last_changed
+
+        if 0 < expire_days <= 14:
+            print(f"{user}'s account will expire in {expire_days} days.")
+        elif expire_days <= 0:
+            print(f"{user}'s account expired {-expire_days} ago. They are unable to login.")
 
 #Checks that user is UID == 0
 sudo_check()
 
-#Reads contents of /etc/passwd and /etc/group
 #If located in nonstandard locations for some reason, can be changed here
 passwd_file = "/etc/passwd"
 group_file = "/etc/group"
+shadow_file = "/etc/shadow"
+
+#Reads the opened files and stores the contents for use
 passwd_file_read = read_file(passwd_file)
 group_file_read = read_file(group_file)
+shadow_file_read = read_file(shadow_file)
 
 #Checks /etc/passwd for duplicate UIDs
 uid_duplicate_check(passwd_file_read)
 
 #Checks /etc/passwd for users UID = 0 or >1000
 get_users(passwd_file_read)
+
+#Checks /etc/shadow file for locked users, expired passwords
+expired_check(shadow_file_read)
 
 #Checks /etc/group for duplicate GUIDs
 guid_duplicate_check(group_file_read)
@@ -113,7 +149,6 @@ guid_duplicate_check(group_file_read)
 get_groups(group_file_read)
 
 #TODO:
-#   - Parse /etc/shadow for expired/locked accounts
 #   - Detect Home folders that do not have matching users
 #   - Detect users who have not logged in for 90 days
 #   - Ability to export to a file via argparse
