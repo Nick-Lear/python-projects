@@ -8,6 +8,7 @@
 #   /etc/shadow
 
 import os
+import argparse
 
 def sudo_check():
     userid = os.geteuid()
@@ -22,6 +23,7 @@ def read_file(file_path):
 
 def uid_duplicate_check(passwd_file_contents):
     uid_filtered = []
+    output = []
     #Creates list of UIDs in /etc/passwd
     for line in passwd_file_contents:
         passwd_field = line.strip().split(":")
@@ -31,10 +33,12 @@ def uid_duplicate_check(passwd_file_contents):
     for x, uid in enumerate(uid_filtered):
         for y, duplicate in enumerate(uid_filtered):
             if x != y and uid == duplicate:
-                print(f"Multiple users have UID of {uid}")
+                output.append(f"Multiple users have UID of {uid}")
+    return "\n".join(output)
 
 def get_users(passwd_file_contents):
     passwd_filtered = []
+    output = []
     for line in passwd_file_contents:
         #Splits rows into chunks/fields
         passwd_fields = line.strip().split(":")
@@ -46,7 +50,7 @@ def get_users(passwd_file_contents):
             continue
         passwd_filtered.append(line.strip())
     # Takes contents of filtered /etc/passwd list and reformats for human reading
-    print("*************LIST OF USERS*************")
+    output.append("*************LIST OF USERS*************")
     for line in passwd_filtered:
         fields = line.strip().split(":")
         username = fields[0]
@@ -54,11 +58,13 @@ def get_users(passwd_file_contents):
         home = fields[5]
         # Checks for users with elevated/root permissions, adds advisory warning
         if 0 == int(uid):
-            print(f"***WARNING***\nUser: {username} has root permissions with UID: {uid}!\n***WARNING***")
-        print(f"User: {username}\nUID: {uid} \nHome directory: {home}\n_____________________________")
+            output.append(f"***WARNING***\nUser: {username} has root permissions with UID: {uid}!\n***WARNING***")
+        output.append(f"User: {username}\nUID: {uid} \nHome directory: {home}\n_____________________________")
+    return "\n".join(output)
 
 def guid_duplicate_check(group_file_contents):
     guid_filtered = []
+    output = []
     #Creates list of GUIDs in /etc/group
     for line in group_file_contents:
         passwd_field = line.strip().split(":")
@@ -68,10 +74,12 @@ def guid_duplicate_check(group_file_contents):
     for x, guid in enumerate(guid_filtered):
         for y, duplicate in enumerate(guid_filtered):
             if x != y and guid == duplicate:
-                print(f"Multiple groups have GUID of {guid}")
+                output.append(f"Multiple groups have GUID of {guid}")
+    return "\n".join(output)
 
 def get_groups(group_file_contents):
     group_filtered = []
+    output = []
     for line in group_file_contents:
         #Splits rows into chunks/fields
         group_fields = line.strip().split(":")
@@ -82,16 +90,18 @@ def get_groups(group_file_contents):
             continue
         group_filtered.append(line.strip())
     #Takes contents of filtered /etc/group file and reformats for human reading
-    print("*************LIST OF GROUPS*************")
+    output.append("*************LIST OF GROUPS*************")
     for line in group_filtered:
         fields = line.strip().split(":")
         group_name = fields[0]
         gid = fields[2]
         members = fields[3]
-        print(f"Group: {group_name}\nGID: {gid}\nMembers: {members}\n_____________________________")
+        output.append(f"Group: {group_name}\nGID: {gid}\nMembers: {members}\n_____________________________")
+    return "\n".join(output)
 
 def expired_check(shadow_file_contents):
-    print("*************LIST OF LOCKED/EXPIRED ACCOUNTS*************")
+    output = []
+    output.append("*************LIST OF LOCKED/EXPIRED ACCOUNTS*************")
     for line in shadow_file_contents:
         shadow_fields = line.strip().split(":")
         user = shadow_fields[0]
@@ -110,18 +120,26 @@ def expired_check(shadow_file_contents):
 
         #Checks for locked users
         if password in ["!", "*"]:
-            print(f"{user}'s account is locked.")
+            output.append(f"{user}'s account is locked.")
 
         #Checks for soon to expire, expired users
         expire_days = max_age - last_changed
 
         if 0 < expire_days <= 14:
-            print(f"{user}'s account will expire in {expire_days} days.")
+            output.append(f"{user}'s account will expire in {expire_days} days.")
         elif expire_days <= 0:
-            print(f"{user}'s account expired {-expire_days} ago. They are unable to login.")
+            output.append(f"{user}'s account expired {-expire_days} ago. They are unable to login.")
+    return "\n".join(output)
 
 #Checks that user is UID == 0
 sudo_check()
+
+#Checks for provided arguments, stores values
+parser = argparse.ArgumentParser(description="Audits system files to create human-readable report")
+
+parser.add_argument("-f", "--file", type=str, default="./audit_output.txt", help="Location of the output file. Current directory by default")
+
+args = parser.parse_args()
 
 #If located in nonstandard locations for some reason, can be changed here
 passwd_file = "/etc/passwd"
@@ -133,20 +151,27 @@ passwd_file_read = read_file(passwd_file)
 group_file_read = read_file(group_file)
 shadow_file_read = read_file(shadow_file)
 
-#Checks /etc/passwd for duplicate UIDs
-uid_duplicate_check(passwd_file_read)
+#Aggregates the output of the functions into one combined string output
+final_output = "\n".join([
+    #Checks /etc/passwd for duplicate UIDs
+    uid_duplicate_check(passwd_file_read),
 
-#Checks /etc/passwd for users UID = 0 or >1000
-get_users(passwd_file_read)
+    #Checks /etc/passwd for users UID = 0 or >1000
+    get_users(passwd_file_read),
 
-#Checks /etc/shadow file for locked users, expired passwords
-expired_check(shadow_file_read)
+    #Checks /etc/shadow file for locked users, expired passwords
+    expired_check(shadow_file_read),
 
-#Checks /etc/group for duplicate GUIDs
-guid_duplicate_check(group_file_read)
+    #Checks /etc/group for duplicate GUIDs
+    guid_duplicate_check(group_file_read),
+    
+    #Checks /etc/group for groups that have members
+    get_groups(group_file_read)
+])
 
-#Checks /etc/group for groups that have members
-get_groups(group_file_read)
+#Writes final_output to the specified file location or default
+with open(args.file, "w") as file:
+    file.write(final_output)
 
 #TODO:
 #   - Detect Home folders that do not have matching users
