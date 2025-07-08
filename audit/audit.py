@@ -36,6 +36,48 @@ def uid_duplicate_check(passwd_file_contents):
                 output.append(f"Multiple users have UID of {uid}")
     return "\n".join(output)
 
+def get_home_folders_passwd(passwd_file_contents):
+    #Creates a set of all the paths to the home folders for each user in /etc/passwd
+    home_set = set()
+    for line in passwd_file_contents:
+        fields = line.strip().split(":")
+
+        #If abnormal number of fields, skip line
+        if len(fields) < 6:
+            continue
+    
+        uid = fields[2]
+        home = fields[5]
+        user = fields[0]
+        #If uid is not a digit, skip line
+        if not uid.isdigit():
+            continue
+
+        uid_num = int(uid)
+        
+        if uid_num >= 1000 and user != "nobody": 
+            home_set.add(home)
+        else:
+            continue
+    
+    return home_set
+
+def get_home_dir():
+    #Creates a set of names of all the folders within the /home/ directory and adds the full path, i.e. /home/USER
+    home_set = set(os.path.join("/home", name) for name in os.listdir("/home"))
+    return home_set
+
+def compare_home(passwd_file_contents):
+    home_passwd = get_home_folders_passwd(passwd_file_contents)
+    home_directory = get_home_dir()
+    output = []
+    
+    home_dif = home_passwd - home_directory
+    
+    output.append(f"\nUsers, if any, who are missing a home folder are:\n{home_dif}")
+    
+    return "\n".join(output)
+
 def get_users(passwd_file_contents):
     passwd_filtered = []
     output = []
@@ -67,8 +109,8 @@ def guid_duplicate_check(group_file_contents):
     output = []
     #Creates list of GUIDs in /etc/group
     for line in group_file_contents:
-        passwd_field = line.strip().split(":")
-        guid_filtered.append(passwd_field[2])
+        group_field = line.strip().split(":")
+        guid_filtered.append(group_field[2])
     #Checks GUIDs in /etc/group for duplicates
     #If any of the GUIDs matches another GUID, output that GUID
     for x, guid in enumerate(guid_filtered):
@@ -105,7 +147,7 @@ def expired_check(shadow_file_contents):
     for line in shadow_file_contents:
         shadow_fields = line.strip().split(":")
         user = shadow_fields[0]
-        password = shadow_fields [1]
+        password = shadow_fields[1]
 
         # Checks to make sure that shadow_fields[2] and shadow_fields[4] are present and valid
         last_changed_string = shadow_fields[2]
@@ -119,7 +161,7 @@ def expired_check(shadow_file_contents):
         max_age = int(max_age_string)
 
         #Checks for locked users
-        if password in ["!", "*"]:
+        if password in ["!", "*"]: 
             output.append(f"{user}'s account is locked.")
 
         #Checks for soon to expire, expired users
@@ -161,6 +203,9 @@ final_output = "\n".join([
 
     #Checks /etc/shadow file for locked users, expired passwords
     expired_check(shadow_file_read),
+
+    #Prints list of users who are missing a /home/ folder
+    compare_home(passwd_file_read),
 
     #Checks /etc/group for duplicate GUIDs
     guid_duplicate_check(group_file_read),
