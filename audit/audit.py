@@ -219,5 +219,4 @@ with open(args.file, "w") as file:
     file.write(final_output)
 
 #TODO:
-#   - Detect Home folders that do not have matching users
 #   - Detect users who have not logged in for 90 days
